@@ -1,6 +1,9 @@
 ﻿@inject IJSRuntime JSRuntime
  
-<canvas id="@Id"></canvas>
+<div id="graph-container">
+    <canvas id="@Id"></canvas>    
+</div>
+
  
 @code {
     public enum ChartType
@@ -38,6 +41,7 @@
             Options = new
             {
                 Responsive = true,
+                // MaintainAspectRatio = false,
                 // Hover = new {
                 //     Mode = "nearest",
                 //     Intersect = true
