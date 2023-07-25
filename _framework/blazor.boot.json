@@ -7,7 +7,7 @@
   "linkerEnabled": true,
   "resources": {
     "assembly": {
-      "gpxSlopeCalculator.dll": "sha256-EWnEOhMDCJNohKSL8ohAtTih1rEtbIoEM9\/D2\/+HDrQ=",
+      "gpxSlopeCalculator.dll": "sha256-6hwjtV25IcO0C2v\/N22WV\/WO2+3Pkl2P2doTtZlty\/4=",
       "Microsoft.AspNetCore.Components.dll": "sha256-ItGsvkaUjargnhlZpmJvtnCnZYDRSm5Qo4CFFl7+27M=",
       "Microsoft.AspNetCore.Components.Web.dll": "sha256-qKMji5F+UFpCVwfp7tspQo42WZakVvUqVWKq01ZtqA8=",
       "Microsoft.AspNetCore.Components.WebAssembly.dll": "sha256-mMcIoLwDtdf4GLuxVwW5OJe8ifn9ZJtjmsPus2SDhOk=",
