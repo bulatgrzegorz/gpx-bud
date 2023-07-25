@@ -1,0 +1,85 @@
+﻿@inject IJSRuntime JSRuntime
+ 
+<canvas id="@Id"></canvas>
+ 
+@code {
+    public enum ChartType
+    {
+        Pie,
+        Bar,
+        Line,
+        Scatter
+    }
+    
+    public class Dataset
+    {
+        public (double Elevetion, double TotalDistance)[] Data { get; set; }
+        public string HexColor { get; set; }
+        public string Label { get; set; }
+        public double SlopeAngle { get; set; }
+    }
+
+    [Parameter]
+    public string Id { get; set; }
+ 
+    [Parameter]
+    public ChartType Type { get; set; }
+
+    [Parameter]
+    public Dataset[] Datasets { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) 
+    {
+    // Here we create an anonymous type with all the options 
+    // that need to be sent to Chart.js
+        var config = new
+        {
+            Type = Type.ToString().ToLower(),
+            Options = new
+            {
+                Responsive = true,
+                // Hover = new {
+                //     Mode = "nearest",
+                //     Intersect = true
+                // },
+                Scales = new
+                {
+                    // YAxes = new[]
+                    // {
+                    //     new { Ticks = new {BeginAtZero=true } }
+                    // },
+                    XAxes = new
+                    {
+                        Ticks = new 
+                        {
+                            Min = 0,
+                            Max = Datasets.SelectMany(x => x.Data).Select(x => x.TotalDistance).Max(),
+                            StepSize = 500
+                        },
+                        // ScaleLabel = new { Display = false }
+                    }
+                },
+                Plugins = new {}
+                // {
+                //     Decimation = "decimation"
+                // }
+            },
+            Data = new
+            {
+                Datasets = Datasets.Select(x => new
+                {
+                    Data = x.Data.Select(z => new { x = z.TotalDistance, y = z.Elevetion}).ToArray(),
+                    SlopeAngle = Math.Round(x.SlopeAngle, 1),
+                    BackgroundColor = x.HexColor,
+                    Fill = true,
+                    PointStyle = false,
+                    Label =  x.Label,
+                    ShowLine = true
+                }).ToArray(),
+                // Labels = Labels
+            }
+        };
+ 
+        await JSRuntime.InvokeVoidAsync("setup", Id, config);
+    }
+}
