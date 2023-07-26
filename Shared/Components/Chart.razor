@@ -2,9 +2,13 @@
 @inject IJSRuntime JSRuntime
  
 <div id="graph-container">
-    <canvas id="@Id"></canvas>    
+    <MudGrid Justify="Justify.FlexEnd">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetChart">Reset zoom</MudButton>
+    </MudGrid>
+    
+    <canvas id="@Id"></canvas>
 </div>
-<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetChart">Reset zoom</MudButton>
+
  
 @code {
     public enum ChartType
