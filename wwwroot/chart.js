@@ -44,6 +44,9 @@ window.setup = (id,config) => {
             drag: {
                 enabled: true
             },
+            pinch: {
+                enabled: true
+            },
             mode: 'x',
         },
     };
