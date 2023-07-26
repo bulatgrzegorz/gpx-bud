@@ -1,11 +1,21 @@
 ﻿@page "/"
+@inject IJSRuntime JSRuntime
 
 @using gpxSlopeCalculator.Logic
 
 <PageTitle>Slope chart</PageTitle>
 
-<h1>Choose you gpx file and generate chart...</h1>
-<InputFile OnChange="@LoadFiles"/>
+<MudFileUpload T="IBrowserFile" Accept=".gpx" OnFilesChanged="LoadFiles" MaximumFileCount="100">
+    <ButtonTemplate>
+        <MudButton HtmlTag="label"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.CloudUpload"
+                   for="@context">
+            Only .gpx files
+        </MudButton>
+    </ButtonTemplate>
+</MudFileUpload>
 
 @if (!@IsChartHidden)
 {
@@ -17,6 +27,11 @@
     private string? content;
     private bool IsChartHidden => _datasetData.Count == 0;
     private List<Chart.Dataset> _datasetData = new();
+
+    // private async Task ResetChart()
+    // {
+    //     await JSRuntime.InvokeVoidAsync("resetChart", "slopeChart");
+    // }
     
     private async Task LoadFiles(InputFileChangeEventArgs arg)
     {
@@ -91,10 +106,18 @@
             }
             
             var angle = MathHelper.RadiansToAngle(Math.Atan((e.elevetion - previousSlopeElevation) / slopeDistance));
+            //this mean that we do have new slope, but actual one should be merged with previous one. We will recreate it
             if (previousSlope.HasValue && Math.Abs(previousSlope.Value - angle) < 2)
             {
-                k++;
-                continue;
+                var lastIterationDataset = _datasetData.Last();
+                var previousIterationElevations = lastIterationDataset.Data;
+                var previousIterationBeginningElevation = previousIterationElevations[0].Elevetion;
+                var combinedSlopeDistance = e.totalDistance - previousIterationElevations[0].TotalDistance;
+                angle = MathHelper.RadiansToAngle(Math.Atan((e.elevetion - previousIterationBeginningElevation) / combinedSlopeDistance));
+
+                iterationElevations = previousIterationElevations.Concat(iterationElevations).ToList();
+
+                _datasetData.Remove(lastIterationDataset);
             }
 
             if (i != elevationPerDistance.Count - 1)
@@ -102,15 +125,10 @@
                 var nextIterationValue = elevationPerDistance[i + 1]; 
                 iterationElevations.Add((nextIterationValue.elevetion, nextIterationValue.totalDistance));
             }
-            
-            _datasetData.Add(new Chart.Dataset()
-            {
-                Data = iterationElevations.ToArray(),
-                HexColor = PlotGenerator.SlopeColorPerGainHex(angle),
-                Label = PlotGenerator.GetAngleLabel(angle),
-                SlopeAngle = angle
-            });
 
+            var dataset = new Chart.Dataset() { Data = iterationElevations.ToArray() };
+            dataset.SetupAngle(angle);
+            _datasetData.Add(dataset);
             
             iterationElevations.Clear();
             previousSlopeElevation = e.elevetion;

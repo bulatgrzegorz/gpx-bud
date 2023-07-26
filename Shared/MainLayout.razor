@@ -1,17 +1,17 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-    @* <div class="sidebar"> *@
-    @*     <NavMenu /> *@
-    @* </div> *@
+<MudThemeProvider/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
 
-    <main>
-        @* <div class="top-row px-4"> *@
-        @*     <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a> *@
-        @* </div> *@
+<MudLayout>
+    <MudAppBar>
+        Slope chart generator
+    </MudAppBar>
 
-        <article class="content px-4">
+    <MudMainContent>
+        <MudContainer Fixed="true">
             @Body
-        </article>
-    </main>
-</div>
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
