@@ -1,9 +1,10 @@
-﻿@inject IJSRuntime JSRuntime
+﻿@using gpxSlopeCalculator.Logic
+@inject IJSRuntime JSRuntime
  
 <div id="graph-container">
     <canvas id="@Id"></canvas>    
 </div>
-
+<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetChart">Reset zoom</MudButton>
  
 @code {
     public enum ChartType
@@ -17,9 +18,16 @@
     public class Dataset
     {
         public (double Elevetion, double TotalDistance)[] Data { get; set; }
-        public string HexColor { get; set; }
-        public string Label { get; set; }
-        public double SlopeAngle { get; set; }
+        public string HexColor { get; private set; }
+        public string Label { get; private set; }
+        public double SlopeAngle { get; private set; }
+
+        public void SetupAngle(double angle)
+        {
+            SlopeAngle = angle;
+            HexColor = PlotGenerator.SlopeColorPerGainHex(angle);
+            Label = PlotGenerator.GetAngleLabel(angle);
+        }
     }
 
     [Parameter]
@@ -33,40 +41,26 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) 
     {
-    // Here we create an anonymous type with all the options 
-    // that need to be sent to Chart.js
         var config = new
         {
             Type = Type.ToString().ToLower(),
             Options = new
             {
                 Responsive = true,
-                // MaintainAspectRatio = false,
-                // Hover = new {
-                //     Mode = "nearest",
-                //     Intersect = true
-                // },
                 Scales = new
                 {
-                    // YAxes = new[]
-                    // {
-                    //     new { Ticks = new {BeginAtZero=true } }
-                    // },
                     XAxes = new
                     {
                         Ticks = new 
                         {
+                            AutoSkip = true,
                             Min = 0,
                             Max = Datasets.SelectMany(x => x.Data).Select(x => x.TotalDistance).Max(),
                             StepSize = 500
                         },
-                        // ScaleLabel = new { Display = false }
                     }
                 },
                 Plugins = new {}
-                // {
-                //     Decimation = "decimation"
-                // }
             },
             Data = new
             {
@@ -80,10 +74,15 @@
                     Label =  x.Label,
                     ShowLine = true
                 }).ToArray(),
-                // Labels = Labels
             }
         };
  
         await JSRuntime.InvokeVoidAsync("setup", Id, config);
     }
+
+    private async Task ResetChart()
+    {
+        await JSRuntime.InvokeVoidAsync("window.resetChart", Id);
+    }
+
 }

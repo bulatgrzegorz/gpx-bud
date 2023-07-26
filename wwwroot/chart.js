@@ -49,4 +49,7 @@ window.setup = (id,config) => {
     };
     
     charts[id] = new Chart(ctx, config);
-}
+};
+window.resetChart = (id) => {
+    if (typeof charts[id] !== 'undefined') { charts[id].resetZoom(); }
+};
