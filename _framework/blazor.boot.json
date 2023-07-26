@@ -7,7 +7,7 @@
   "linkerEnabled": true,
   "resources": {
     "assembly": {
-      "gpxSlopeCalculator.dll": "sha256-aYXsQuBWg3do9OX19rYK1RYpO5IahGx25DxKgiGRVkU=",
+      "gpxSlopeCalculator.dll": "sha256-TQKrnIJTA+GA8guVQ27fONmPvh+scZbMpgVWzMyRaaQ=",
       "Microsoft.AspNetCore.Components.dll": "sha256-YAcxZB8Xn9LQolCe9V\/DgW6tPWKdO7dHrzEGUXaBExE=",
       "Microsoft.AspNetCore.Components.Forms.dll": "sha256-wcPyGU\/T7lzlTPNy+M4AeOL1yYc7qTSAkQwoYJPJdO0=",
       "Microsoft.AspNetCore.Components.Web.dll": "sha256-1tDAUyP+fnrrejZdHIih8BWcASUfvQ4Q8pYRuNDTWYU=",
@@ -25,7 +25,7 @@
       "Microsoft.Extensions.Primitives.dll": "sha256-eXvGx2jcjpTPEJoAHBsW\/VuMPbNyyU+AsuhPmkzSSRY=",
       "Microsoft.JSInterop.dll": "sha256-H8TvonKJpHfQU+1x\/mY9b6xRW9\/eXLTqsWX\/wRGdweo=",
       "Microsoft.JSInterop.WebAssembly.dll": "sha256-3+dHa65PgCYOsUMlsJSDYPxt294+nWZxeMbopoWb+fA=",
-      "MudBlazor.dll": "sha256-1HTRHb1XT88n+ambrlDaXY+9XVibkezpMdRJoPsyYMg=",
+      "MudBlazor.dll": "sha256-fuQ6dTZH9P0DOzKei1DBHXDmKNIqu6D8GU9qtzPiQEg=",
       "System.Collections.Concurrent.dll": "sha256-CuvU7r5skH2NBl6CchXy3HS4zxRw1pXv82\/L2JMgJGo=",
       "System.Collections.dll": "sha256-\/2UMm87EMM86gy4AKvzHwIxZ4KMFNzIDiSFh\/y4dSMk=",
       "System.Collections.NonGeneric.dll": "sha256-cXN61s2zkmUfRuYvaXgWyGDqpGzCMzKOnbg1PzDlEq0=",
