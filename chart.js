@@ -27,7 +27,7 @@ window.setup = (id,config) => {
         displayColors: false,
         callbacks: {
             label: function (context){
-                return [`Angle: ${context.dataset.slopeAngle}°`, `Distance: ${context.parsed.x}m`, `Elevation: ${context.parsed.y}m`];
+                return [`${context.dataset.slopeType}: ${context.dataset.slopeAngle}${context.dataset.slopeTypeSuffix}`, `Distance: ${context.parsed.x}m`, `Elevation: ${context.parsed.y}m`];
             }
         }
     };
