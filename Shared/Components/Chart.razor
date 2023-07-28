@@ -2,10 +2,20 @@
 @inject IJSRuntime JSRuntime
  
 <div id="graph-container">
-    <MudGrid Justify="Justify.FlexEnd">
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetChart">Reset zoom</MudButton>
+    <MudGrid Justify="Justify.SpaceBetween">
+        <MudItem>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetChart">Reset zoom</MudButton>
+        </MudItem>
+        <MudItem>
+            <MudSelect T="SlopeGradeType" ValueChanged="SlopeTypeChanged" ToStringFunc="i => Enum.GetName(typeof(SlopeGradeType), i)" OpenIcon="@Icons.Material.Filled.SsidChart" AdornmentColor="Color.Secondary">
+                @foreach (SlopeGradeType item in Enum.GetValues(typeof(SlopeGradeType)))
+                {
+                    <MudSelectItem T="SlopeGradeType" Value="@item"/>
+                }
+            </MudSelect>
+        </MudItem>
     </MudGrid>
-    
+
     <canvas id="@Id"></canvas>
 </div>
 
@@ -24,22 +34,32 @@
         public (double Elevetion, double TotalDistance)[] Data { get; set; }
         public string HexColor { get; private set; }
         public string Label { get; private set; }
-        public double SlopeAngle { get; private set; }
+        public double Slope { get; private set; }
+        public string SlopeType { get; set; }
+        public string SlopeTypeSuffix { get; set; }
 
-        public void SetupAngle(double angle)
+        public void SetupSlope(double slope, SlopeGradeType type)
         {
-            SlopeAngle = angle;
-            HexColor = PlotGenerator.SlopeColorPerGainHex(angle);
-            Label = PlotGenerator.GetAngleLabel(angle);
+            Slope = slope;
+            HexColor = PlotGenerator.SlopeColorPerGainHex(slope);
+            Label = PlotGenerator.GetSlopeLabel(slope);
+            SlopeTypeSuffix = PlotGenerator.GetSlopeTypeSuffix(type);
+            SlopeType = type.ToString();
         }
     }
-
+    
     [Parameter]
     public string Id { get; set; }
  
     [Parameter]
     public ChartType Type { get; set; }
 
+    [Parameter]
+    public SlopeGradeType SlopeType { get; set; } = SlopeGradeType.Percent;
+    
+    [Parameter]
+    public Func<Task> OnSettingsChanged { get; set; }
+    
     [Parameter]
     public Dataset[] Datasets { get; set; }
 
@@ -71,12 +91,14 @@
                 Datasets = Datasets.Select(x => new
                 {
                     Data = x.Data.Select(z => new { x = z.TotalDistance, y = z.Elevetion}).ToArray(),
-                    SlopeAngle = Math.Round(x.SlopeAngle, 1),
+                    SlopeAngle = Math.Round(x.Slope, 1),
                     BackgroundColor = x.HexColor,
                     Fill = true,
                     PointStyle = false,
                     Label =  x.Label,
-                    ShowLine = true
+                    ShowLine = true,
+                    SlopeType = x.SlopeType,
+                    SlopeTypeSuffix = x.SlopeTypeSuffix
                 }).ToArray(),
             }
         };
@@ -89,4 +111,9 @@
         await JSRuntime.InvokeVoidAsync("window.resetChart", Id);
     }
 
+    private async Task SlopeTypeChanged(SlopeGradeType value)
+    {
+        SlopeType = value;
+        await (OnSettingsChanged?.Invoke() ?? Task.CompletedTask);
+    }
 }

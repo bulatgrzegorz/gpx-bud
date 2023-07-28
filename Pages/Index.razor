@@ -19,20 +19,17 @@
 
 @if (!@IsChartHidden)
 {
-    <Chart Id="slopeChart" Type="@Chart.ChartType.Scatter" Datasets="@_datasetData.ToArray()">
+    <Chart Id="slopeChart" OnSettingsChanged="GenerateSlope" Type="@Chart.ChartType.Scatter" @ref="SlopeChart" Datasets="@_datasetData.ToArray()">
     </Chart>
 }
 
 @code {
+    private Chart? SlopeChart { get; set; }
     private string? content;
     private bool IsChartHidden => _datasetData.Count == 0;
     private List<Chart.Dataset> _datasetData = new();
+    private SlopeGradeType SlopeGradeType => SlopeChart?.SlopeType ?? SlopeGradeType.Percent;
 
-    // private async Task ResetChart()
-    // {
-    //     await JSRuntime.InvokeVoidAsync("resetChart", "slopeChart");
-    // }
-    
     private async Task LoadFiles(InputFileChangeEventArgs arg)
     {
         if (!arg.File.Name.EndsWith("gpx", StringComparison.InvariantCultureIgnoreCase))
@@ -51,6 +48,9 @@
         {
             throw new ArgumentException("First choose file");
         }
+        
+        _datasetData.Clear();
+        Console.WriteLine($"Generating slope with type: {SlopeChart?.SlopeType.ToString()}");
         
         var gpxContent = GpxSerializer.Deserialize(content);
 
@@ -105,15 +105,15 @@
                 continue;
             }
             
-            var angle = MathHelper.RadiansToAngle(Math.Atan((e.elevetion - previousSlopeElevation) / slopeDistance));
+            var slope = PlotGenerator.CalculateSlopeGrade(e.elevetion - previousSlopeElevation, slopeDistance, SlopeGradeType);
             //this mean that we do have new slope, but actual one should be merged with previous one. We will recreate it
-            if (previousSlope.HasValue && Math.Abs(previousSlope.Value - angle) < 2)
+            if (previousSlope.HasValue && Math.Abs(previousSlope.Value - slope) < 2)
             {
                 var lastIterationDataset = _datasetData.Last();
                 var previousIterationElevations = lastIterationDataset.Data;
                 var previousIterationBeginningElevation = previousIterationElevations[0].Elevetion;
                 var combinedSlopeDistance = e.totalDistance - previousIterationElevations[0].TotalDistance;
-                angle = MathHelper.RadiansToAngle(Math.Atan((e.elevetion - previousIterationBeginningElevation) / combinedSlopeDistance));
+                slope = PlotGenerator.CalculateSlopeGrade(e.elevetion - previousIterationBeginningElevation, combinedSlopeDistance, SlopeGradeType);
 
                 iterationElevations = previousIterationElevations.Concat(iterationElevations).ToList();
 
@@ -127,16 +127,24 @@
             }
 
             var dataset = new Chart.Dataset() { Data = iterationElevations.ToArray() };
-            dataset.SetupAngle(angle);
+            dataset.SetupSlope(slope, SlopeChart?.SlopeType ?? SlopeGradeType.Percent);
             _datasetData.Add(dataset);
             
             iterationElevations.Clear();
             previousSlopeElevation = e.elevetion;
             slopeDistance = 0;
-            previousSlope = angle;
+            previousSlope = slope;
             k++;
         }
 
+        if (SlopeChart != null)
+        {
+            SlopeChart.Datasets = _datasetData.ToArray();
+        }
+        
         return Task.CompletedTask;
     }
+
+    
+
 }
