@@ -1,4 +1,6 @@
 ﻿@using gpxSlopeCalculator.Logic
+@using System.Runtime.CompilerServices
+@using MudBlazor.Interfaces
 @inject IJSRuntime JSRuntime
  
 <div id="graph-container">
@@ -16,7 +18,19 @@
         </MudItem>
     </MudGrid>
 
-    <canvas id="@Id"></canvas>
+    <MudGrid Justify="Justify.FlexStart">
+        <MudItem>
+            <MudText @ref="_elevationMudTextComponent">
+                <MudIcon Icon="@Icons.Material.Filled.Moving"/> Elevation gain: @($"{ElevationGain:0.00}")m
+            </MudText>
+        </MudItem>
+        <MudItem>
+            <MudText @ref="_distanceMudTextComponent">
+                <MudIcon Icon="@Icons.Material.Filled.ArrowForward"/> Total distance: @($"{Distance:0.00}")m
+            </MudText>
+        </MudItem>
+    </MudGrid>
+    <canvas id="@Id" width="100%" height="35%"></canvas>
 </div>
 
  
@@ -47,7 +61,10 @@
             SlopeType = type.ToString();
         }
     }
-    
+
+    private MudText? _elevationMudTextComponent;
+    private MudText? _distanceMudTextComponent;
+
     [Parameter]
     public string Id { get; set; }
  
@@ -58,13 +75,20 @@
     public SlopeGradeType SlopeType { get; set; } = SlopeGradeType.Percent;
     
     [Parameter]
+    public double ElevationGain { get; set; }
+    
+    [Parameter]
+    public double Distance { get; set; }
+    
+    [Parameter]
     public Func<Task> OnSettingsChanged { get; set; }
     
     [Parameter]
     public Dataset[] Datasets { get; set; }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) 
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        var maxTotalDistance = Datasets.SelectMany(x => x.Data).Select(x => x.TotalDistance).Max();
         var config = new
         {
             Type = Type.ToString().ToLower(),
@@ -79,7 +103,7 @@
                         {
                             AutoSkip = true,
                             Min = 0,
-                            Max = Datasets.SelectMany(x => x.Data).Select(x => x.TotalDistance).Max(),
+                            Max = maxTotalDistance,
                             StepSize = 500
                         },
                     }
@@ -100,15 +124,28 @@
                     SlopeType = x.SlopeType,
                     SlopeTypeSuffix = x.SlopeTypeSuffix
                 }).ToArray(),
+                MaxTotalDistance = maxTotalDistance
             }
         };
- 
-        await JSRuntime.InvokeVoidAsync("setup", Id, config);
+
+        await JSRuntime.InvokeVoidAsync("setup", Id, config, DotNetObjectReference.Create(this));
     }
 
     private async Task ResetChart()
     {
         await JSRuntime.InvokeVoidAsync("window.resetChart", Id);
+    }
+    
+    [JSInvokable("ZoomChanged")]
+    public Task ZoomChanged(double elevation, double distance)
+    {
+        Distance = distance;
+        ElevationGain = elevation;
+        
+        (_elevationMudTextComponent as IMudStateHasChanged)?.StateHasChanged();
+        (_distanceMudTextComponent as IMudStateHasChanged)?.StateHasChanged();
+        
+        return Task.CompletedTask;
     }
 
     private async Task SlopeTypeChanged(SlopeGradeType value)

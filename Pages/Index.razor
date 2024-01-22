@@ -19,7 +19,7 @@
 
 @if (!@IsChartHidden)
 {
-    <Chart Id="slopeChart" OnSettingsChanged="GenerateSlope" Type="@Chart.ChartType.Scatter" @ref="SlopeChart" Datasets="@_datasetData.ToArray()">
+    <Chart Id="slopeChart" OnSettingsChanged="GenerateSlope" Type="@Chart.ChartType.Scatter" ElevationGain="_sumElevationGain" Distance="_totalDistance" @ref="SlopeChart" Datasets="@_datasetData.ToArray()">
     </Chart>
 }
 
@@ -29,6 +29,8 @@
     private bool IsChartHidden => _datasetData.Count == 0;
     private List<Chart.Dataset> _datasetData = new();
     private SlopeGradeType SlopeGradeType => SlopeChart?.SlopeType ?? SlopeGradeType.Percent;
+    private double _sumElevationGain;
+    private double _totalDistance;
 
     private async Task LoadFiles(InputFileChangeEventArgs arg)
     {
@@ -53,21 +55,26 @@
         Console.WriteLine($"Generating slope with type: {SlopeChart?.SlopeType.ToString()}");
         
         var gpxContent = GpxSerializer.Deserialize(content);
+        _totalDistance = 0;
+        _sumElevationGain = 0;
 
-        double totalDistance = 0;
         var previousPoint = gpxContent.Trk.Trkseg.Trkpt.First();
         var elevationPerDistance = new List<(double elevetion, double totalDistance, double pointDistance)>();
         foreach (var trkpt in gpxContent.Trk.Trkseg.Trkpt)
         {
+            if (trkpt.Ele > previousPoint.Ele)
+            {
+                _sumElevationGain += trkpt.Ele - previousPoint.Ele;
+            }
+            
             var pointDistance = Haversine.Calculate(previousPoint.Lat, previousPoint.Lon, trkpt.Lat, trkpt.Lon);
             if (pointDistance < 0.0005)
             {
                 continue;
             }
-            totalDistance += pointDistance;
+            _totalDistance += pointDistance;
             
-            
-            elevationPerDistance.Add((trkpt.Ele, Math.Round(totalDistance, 2), pointDistance));
+            elevationPerDistance.Add((trkpt.Ele, Math.Round(_totalDistance, 2), pointDistance));
 
             previousPoint = trkpt;
         }
@@ -140,11 +147,10 @@
         if (SlopeChart != null)
         {
             SlopeChart.Datasets = _datasetData.ToArray();
+            SlopeChart.ElevationGain = _sumElevationGain;
+            SlopeChart.Distance = _totalDistance;
         }
         
         return Task.CompletedTask;
     }
-
-    
-
 }
