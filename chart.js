@@ -49,28 +49,6 @@ window.setup = (id,config, instance) => {
             },
             mode: 'x',
             onZoomComplete: async function({chart}){
-                
-                const start = chart.scales.xAxes.start;
-                const end = chart.scales.xAxes.end;
- 
-                let elevation = 0.0;
-                const datasets = chart.config.data.datasets;
-                for (let i = 0; i < datasets.length; i++){
-                    const data = datasets[i].data
-                    if(data[0].x < start){
-                        continue;
-                    }
-                    
-                    let previous = data[0];
-                    for (let j = 1; j < data.length; j++){
-                        if(data[j].x > start && data[j].x < end){
-                            elevation += Math.max(0, data[j].y - previous.y) 
-                        }
-                        
-                        previous = data[j];
-                    }
-                }
-
                 let xTicks = chart.scales.xAxes.ticks;
                 let distance = 0;
                 if(xTicks.length >= 2){
@@ -79,7 +57,9 @@ window.setup = (id,config, instance) => {
                 
                 distance = Math.min(chart.config.data.maxTotalDistance, distance)
 
-                await instance.invokeMethodAsync('ZoomChanged', elevation, distance);
+                const start = chart.scales.xAxes.start;
+                const end = chart.scales.xAxes.end;
+                await instance.invokeMethodAsync('ZoomChanged', start, end, distance);
             }
         },
     };
