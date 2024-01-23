@@ -36,7 +36,14 @@
 
 @if (!@IsChartHidden)
 {
-    <Chart Id="slopeChart" OnSettingsChanged="GenerateSlope" Type="@Chart.ChartType.Scatter" ElevationGain="_sumElevationGain" Distance="_totalDistance" @ref="SlopeChart" Datasets="@_datasetData.ToArray()">
+    <Chart Id="slopeChart" 
+           OnSettingsChanged="GenerateSlope" 
+           CalculateElevationGain="CalculateElevationGain"
+           Type="@Chart.ChartType.Scatter" 
+           ElevationGain="_sumElevationGain"
+           Distance="_totalDistance" 
+           @ref="SlopeChart" 
+           Datasets="@_datasetData.ToArray()">
     </Chart>
 }
 
@@ -68,7 +75,7 @@
             throw new ArgumentException($"Only gpx files are accepted. Got: {arg.File.Name}");
         }
         
-        content = await new StreamReader(arg.File.OpenReadStream()).ReadToEndAsync();
+        content = await new StreamReader(arg.File.OpenReadStream(30000000L)).ReadToEndAsync();
         _datasetData = new();
         await GenerateSlope();
     }
@@ -206,6 +213,37 @@
             }
 
             elevationLastValid = currentPoint;
+        }
+
+        return result;
+    }
+    
+    //TODO: Should be refactored and combined somehow with CalculateElevationGain(Gpx gpxContent)
+    private double CalculateElevationGain(double visibleXAxesStart, double visibleXAxesEnd)
+    {
+        double result = 0;
+        (double elevation, double totalDistance)? lastValid = null;
+        var elevations = _datasetData.SelectMany(x => x.Data).ToList();
+        foreach (var currentPoint in elevations)
+        {
+            if(currentPoint.TotalDistance < visibleXAxesStart) continue;
+            if(currentPoint.TotalDistance > visibleXAxesEnd) break;
+
+            if (lastValid is null)
+            {
+                lastValid = currentPoint;
+                continue;
+            }
+            
+            var difference = currentPoint.Elevetion - lastValid.Value.elevation;
+            if (!(Math.Abs(difference) > _elevationThreshold)) continue;
+
+            if (difference > 0)
+            {
+                result += difference;
+            }
+
+            lastValid = currentPoint;
         }
 
         return result;

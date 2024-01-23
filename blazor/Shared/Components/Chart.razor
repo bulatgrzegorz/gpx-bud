@@ -84,6 +84,9 @@
     public Func<Task> OnSettingsChanged { get; set; }
     
     [Parameter]
+    public Func<double, double, double> CalculateElevationGain { get; set; }
+    
+    [Parameter]
     public Dataset[] Datasets { get; set; }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -137,10 +140,10 @@
     }
     
     [JSInvokable("ZoomChanged")]
-    public Task ZoomChanged(double elevation, double distance)
+    public Task ZoomChanged(double visibleXAxesStart, double visibleXAxesEnd, double distance)
     {
         Distance = distance;
-        ElevationGain = elevation;
+        ElevationGain = CalculateElevationGain(visibleXAxesStart, visibleXAxesEnd);
         
         (_elevationMudTextComponent as IMudStateHasChanged)?.StateHasChanged();
         (_distanceMudTextComponent as IMudStateHasChanged)?.StateHasChanged();
