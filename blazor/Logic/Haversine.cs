@@ -10,7 +10,7 @@ public static class Haversine
         lat2 = MathHelper.AngleToRadians(lat2);
 
         var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) + Math.Sin(dLon / 2) * Math.Sin(dLon / 2) * Math.Cos(lat1) * Math.Cos(lat2);
-        var c = 2 * Math.Asin(Math.Sqrt(a));
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1-a));
         return r * c;
     }
 }

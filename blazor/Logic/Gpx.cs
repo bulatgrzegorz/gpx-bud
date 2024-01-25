@@ -34,8 +34,8 @@ public class Trkseg
 [XmlRoot(ElementName="trkpt")]
 public class Trkpt
 {
-    [XmlElement(ElementName="ele")]
-    public double Ele { get; set; }
+    [XmlElement(ElementName = "ele")] 
+    public double Ele { get; set; } = -1;
     
     [XmlAttribute(AttributeName="lat")]
     public double Lat { get; set; }

@@ -53,6 +53,7 @@
     private string? content;
     private bool IsChartHidden => _datasetData.Count == 0;
     private List<Chart.Dataset> _datasetData = new();
+    private List<Point> _points = new();
     private SlopeGradeType SlopeGradeType => SlopeChart?.SlopeType ?? SlopeGradeType.Percent;
     private double _sumElevationGain;
     private double _totalDistance;
@@ -60,6 +61,7 @@
     private int _distanceThreshold = 10;
     private int _slopeDistanceThreshold = 50;
     private int _combineSlopesDifferenceThreshold = 2;
+    private int _smoothingWindowThreshold = 100;
 
     private void ToggleSettings() => settingsOpen = !settingsOpen;
     private void CloseSettings()
@@ -92,10 +94,12 @@
         
         var gpxContent = GpxSerializer.Deserialize(content);
 
-        _sumElevationGain = CalculateElevationGain(gpxContent);
-        (_totalDistance, var elevationPerDistance) = CalculateTotalDistanceAndElevations(gpxContent);
+        var points = gpxContent.PrepareGpxPoints(_smoothingWindowThreshold);
+        _points = points;
+        _sumElevationGain = points.CalculateElevationGain();
+        _totalDistance = points[^1].TotalDistance;
 
-        var elevetions = elevationPerDistance.Select(x => x.elevetion).ToArray();
+        var elevetions = points.Select(x => x.Elevation).ToArray();
 
         var secondSlopeDerivative = SlopeDerivativeCalculator.GetSecondSlopeDerivative(elevetions);
         var slopePercentile = PercentileCalculator.Percentile(secondSlopeDerivative, 0.95);
@@ -103,16 +107,16 @@
         var k = 0;
         double slopeDistance = 0;
         double? previousSlope = null;
-        var firstElevation = elevationPerDistance.First().elevetion;
+        var firstElevation = points.First().Elevation;
         var previousSlopeElevation = firstElevation;
 
         var iterationElevations = new List<(double elevetion, double totalDistance)>();
-        for (var i = 0; i < elevationPerDistance.Count - 1; i++)
+        for (var i = 0; i < points.Count - 1; i++)
         {
-            var e = elevationPerDistance[i];
+            var e = points[i];
 
-            iterationElevations.Add((e.elevetion, e.totalDistance));
-            slopeDistance += e.pointDistance;
+            iterationElevations.Add((e.Elevation, e.TotalDistance));
+            slopeDistance += e.PointDistance;
 
             if (slopeDistance < _slopeDistanceThreshold)
             {
@@ -128,25 +132,25 @@
                 continue;
             }
             
-            var slope = PlotGenerator.CalculateSlopeGrade(e.elevetion - previousSlopeElevation, slopeDistance, SlopeGradeType);
+            var slope = PlotGenerator.CalculateSlopeGrade(e.Elevation - previousSlopeElevation, slopeDistance, SlopeGradeType);
             //this mean that we do have new slope, but actual one should be merged with previous one. We will recreate it
             if (previousSlope.HasValue && Math.Abs(previousSlope.Value - slope) < _combineSlopesDifferenceThreshold)
             {
                 var lastIterationDataset = _datasetData.Last();
                 var previousIterationElevations = lastIterationDataset.Data;
                 var previousIterationBeginningElevation = previousIterationElevations[0].Elevetion;
-                var combinedSlopeDistance = e.totalDistance - previousIterationElevations[0].TotalDistance;
-                slope = PlotGenerator.CalculateSlopeGrade(e.elevetion - previousIterationBeginningElevation, combinedSlopeDistance, SlopeGradeType);
+                var combinedSlopeDistance = e.TotalDistance - previousIterationElevations[0].TotalDistance;
+                slope = PlotGenerator.CalculateSlopeGrade(e.Elevation - previousIterationBeginningElevation, combinedSlopeDistance, SlopeGradeType);
 
                 iterationElevations = previousIterationElevations.Concat(iterationElevations).ToList();
 
                 _datasetData.Remove(lastIterationDataset);
             }
 
-            if (i != elevationPerDistance.Count - 1)
+            if (i != points.Count - 1)
             {
-                var nextIterationValue = elevationPerDistance[i + 1]; 
-                iterationElevations.Add((nextIterationValue.elevetion, nextIterationValue.totalDistance));
+                var nextIterationValue = points[i + 1]; 
+                iterationElevations.Add((nextIterationValue.Elevation, nextIterationValue.TotalDistance));
             }
 
             var dataset = new Chart.Dataset() { Data = iterationElevations.ToArray() };
@@ -154,7 +158,7 @@
             _datasetData.Add(dataset);
             
             iterationElevations.Clear();
-            previousSlopeElevation = e.elevetion;
+            previousSlopeElevation = e.Elevation;
             slopeDistance = 0;
             previousSlope = slope;
             k++;
@@ -169,84 +173,11 @@
         
         return Task.CompletedTask;
     }
-
-    private (double totalDistance, List<(double elevetion, double totalDistance, double pointDistance)> elevationsPerDistance) CalculateTotalDistanceAndElevations(Gpx gpxContent)
-    {
-        var elevationPerDistance = new List<(double elevetion, double totalDistance, double pointDistance)>();
-        double totalDistance = 0;
-        
-        var lastValid = gpxContent.Trk.Trkseg.Trkpt[0];
-        for (var i = 1; i < gpxContent.Trk.Trkseg.Trkpt.Count; i++)
-        {
-            var currentPoint = gpxContent.Trk.Trkseg.Trkpt[i];
-            var pointDistance = Haversine.Calculate(lastValid.Lat, lastValid.Lon, currentPoint.Lat, currentPoint.Lon);
-            if (pointDistance < _distanceThreshold)
-            {
-                continue;
-            }
-
-            totalDistance += pointDistance;
-
-            elevationPerDistance.Add((currentPoint.Ele, Math.Round(totalDistance, 2), pointDistance));
-
-            lastValid = currentPoint;
-        }
-
-        return (totalDistance, elevationPerDistance);
-    }
-
-    private double CalculateElevationGain(Gpx gpxContent)
-    {
-        double result = 0;
-        
-        var elevationLastValid = gpxContent.Trk.Trkseg.Trkpt[0];
-        for (var i = 1; i < gpxContent.Trk.Trkseg.Trkpt.Count; i++)
-        {
-            var currentPoint = gpxContent.Trk.Trkseg.Trkpt[i];
-            
-            var difference = currentPoint.Ele - elevationLastValid.Ele;
-            if (!(Math.Abs(difference) > _elevationThreshold)) continue;
-            
-            if (difference > 0)
-            {
-                result += difference;
-            }
-
-            elevationLastValid = currentPoint;
-        }
-
-        return result;
-    }
     
     //TODO: Should be refactored and combined somehow with CalculateElevationGain(Gpx gpxContent)
     private double CalculateElevationGain(double visibleXAxesStart, double visibleXAxesEnd)
     {
-        double result = 0;
-        (double elevation, double totalDistance)? lastValid = null;
-        var elevations = _datasetData.SelectMany(x => x.Data).ToList();
-        foreach (var currentPoint in elevations)
-        {
-            if(currentPoint.TotalDistance < visibleXAxesStart) continue;
-            if(currentPoint.TotalDistance > visibleXAxesEnd) break;
-
-            if (lastValid is null)
-            {
-                lastValid = currentPoint;
-                continue;
-            }
-            
-            var difference = currentPoint.Elevetion - lastValid.Value.elevation;
-            if (!(Math.Abs(difference) > _elevationThreshold)) continue;
-
-            if (difference > 0)
-            {
-                result += difference;
-            }
-
-            lastValid = currentPoint;
-        }
-
-        return result;
+        return _points.Where(x => x.TotalDistance >= visibleXAxesStart && x.TotalDistance <= visibleXAxesEnd).ToList().CalculateElevationGain();
     }
 
     private async Task OnElevationThresholdChange(int val)
