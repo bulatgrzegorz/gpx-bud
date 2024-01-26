@@ -6,11 +6,14 @@ window.setup = (id,config, instance) => {
     if(!config.options.plugins){
         config.options.plugins = {};
     }
+    
     config.options.plugins.legend = {
         onClick: (evt, legendItem, legend) => {
+            console.log(legendItem)
             let newVal = !legendItem.hidden;
             legend.chart.data.datasets.forEach(dataset => {
                 if (dataset.label === legendItem.text) {
+                    console.log(dataset)
                     dataset.hidden = newVal
                 }
             });
@@ -27,7 +30,7 @@ window.setup = (id,config, instance) => {
         displayColors: false,
         callbacks: {
             label: function (context){
-                return [`${context.dataset.slopeType}: ${context.dataset.slopeAngle}${context.dataset.slopeTypeSuffix}`, `Distance: ${context.parsed.x}m`, `Elevation: ${context.parsed.y}m`];
+                return context.raw.s.map(x => x); 
             }
         }
     };
@@ -64,7 +67,8 @@ window.setup = (id,config, instance) => {
         },
     };
     
-    charts[id] = new Chart(ctx, config);
+    var chart = new Chart(ctx, config);
+    charts[id] = chart;
 };
 window.resetChart = (id) => {
     if (typeof charts[id] !== 'undefined') { charts[id].resetZoom(); }
