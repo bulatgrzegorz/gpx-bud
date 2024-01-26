@@ -186,11 +186,14 @@
     }
     
     //TODO: Should be refactored and combined somehow with CalculateElevationGain(Gpx gpxContent)
-    private double CalculateElevationGain(double visibleXAxesStart, double visibleXAxesEnd)
+    private (double, double) CalculateElevationGain(double visibleXAxesStart, double visibleXAxesEnd)
     {
         var visiblePoints = _points.Where(x => x.TotalDistance >= visibleXAxesStart && x.TotalDistance <= visibleXAxesEnd).ToList();
-        if (visiblePoints.Count == 0) return 0;
-        return visiblePoints.CalculateElevationGain();
+        if (visiblePoints.Count == 0) return (0, 0);
+        var elevation = visiblePoints.CalculateElevationGain();
+        var distance = visiblePoints[^1].TotalDistance - visiblePoints[0].TotalDistance;
+
+        return (elevation, distance);
     }
     
     private async Task OnSmoothingWindowsDistanceThresholdChange(int val)

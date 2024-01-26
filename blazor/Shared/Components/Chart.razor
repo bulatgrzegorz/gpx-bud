@@ -95,7 +95,7 @@
     public Func<Task> OnSettingsChanged { get; set; }
     
     [Parameter]
-    public Func<double, double, double> CalculateElevationGain { get; set; }
+    public Func<double, double, (double, double)> CalculateElevationGain { get; set; }
     
     [Parameter]
     public Dataset[] Datasets { get; set; }
@@ -153,9 +153,12 @@
     {
         await JSRuntime.InvokeVoidAsync("window.resetChart", Id);
     }
+
+    [JSInvokable("ZoomReset")]
+    public Task ZoomReset() => ZoomChanged(double.MinValue, double.MaxValue);
     
     [JSInvokable("ZoomChanged")]
-    public Task ZoomChanged(double visibleXAxesStart, double visibleXAxesEnd, double distance)
+    public Task ZoomChanged(double visibleXAxesStart, double visibleXAxesEnd)
     {
         if (visibleXAxesStart > visibleXAxesEnd)
         {
@@ -170,8 +173,7 @@
             return Task.CompletedTask;
         }
         
-        Distance = distance;
-        ElevationGain = CalculateElevationGain(visibleXAxesStart, visibleXAxesEnd);
+        (ElevationGain, Distance) = CalculateElevationGain(visibleXAxesStart, visibleXAxesEnd);
         
         (_elevationMudTextComponent as IMudStateHasChanged)?.StateHasChanged();
         (_distanceMudTextComponent as IMudStateHasChanged)?.StateHasChanged();
