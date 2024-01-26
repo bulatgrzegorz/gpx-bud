@@ -45,19 +45,30 @@
     
     public class Dataset
     {
-        public (double Elevetion, double TotalDistance)[] Data { get; set; }
+        public (double Elevetion, double TotalDistance, double slope)[] Data { get; set; }
         public string HexColor { get; private set; }
-        public string Label { get; private set; }
+        public Label Label { get; private set; }
         public double Slope { get; private set; }
         public string SlopeType { get; set; }
         public string SlopeTypeSuffix { get; set; }
+        public bool ShowLine { get; private set; } = true;
 
+        public Dataset(){}
+        public Dataset(Label label)
+        {
+            Data = [];
+            Label = label;
+            HexColor = LabelExtensions.SlopeColorPerGainHex(label);
+            ShowLine = false;
+        }
+        
         public void SetupSlope(double slope, SlopeGradeType type)
         {
+            var label = LabelExtensions.GetLabel(slope);
             Slope = slope;
-            HexColor = PlotGenerator.SlopeColorPerGainHex(slope);
-            Label = PlotGenerator.GetSlopeLabel(slope);
-            SlopeTypeSuffix = PlotGenerator.GetSlopeTypeSuffix(type);
+            HexColor = LabelExtensions.SlopeColorPerGainHex(label);
+            Label = label;
+            SlopeTypeSuffix = LabelExtensions.GetSlopeTypeSuffix(type);
             SlopeType = type.ToString();
         }
     }
@@ -91,6 +102,8 @@
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        var labels = Datasets.GroupBy(x => x.Label).OrderBy(x => x.Key.Order).Select(x => new Dataset(x.Key)).ToArray();
+        Dataset[] datasets = [..labels, ..Datasets];
         var maxTotalDistance = Datasets.SelectMany(x => x.Data).Select(x => x.TotalDistance).Max();
         var config = new
         {
@@ -115,17 +128,19 @@
             },
             Data = new
             {
-                Datasets = Datasets.Select(x => new
+                Datasets = datasets.Select(x => new
                 {
-                    Data = x.Data.Select(z => new { x = z.TotalDistance, y = z.Elevetion}).ToArray(),
-                    SlopeAngle = Math.Round(x.Slope, 1),
+                    Data = x.Data.Select(z => new
+                    {
+                        x = z.TotalDistance, 
+                        y = z.Elevetion, 
+                        s = new[] {$"{Math.Round(z.slope, 1)}{x.SlopeTypeSuffix} (segment: {Math.Round(x.Slope, 1)}{x.SlopeTypeSuffix})", $"Distance: {z.TotalDistance}m, Elevation: {z.Elevetion}m"}
+                    }).ToArray(),
                     BackgroundColor = x.HexColor,
                     Fill = true,
                     PointStyle = false,
-                    Label = x.Label,
-                    ShowLine = true,
-                    SlopeType = x.SlopeType,
-                    SlopeTypeSuffix = x.SlopeTypeSuffix
+                    Label = x.Label.Value,
+                    ShowLine = x.ShowLine,
                 }).ToArray(),
                 MaxTotalDistance = maxTotalDistance
             }
@@ -142,6 +157,19 @@
     [JSInvokable("ZoomChanged")]
     public Task ZoomChanged(double visibleXAxesStart, double visibleXAxesEnd, double distance)
     {
+        if (visibleXAxesStart > visibleXAxesEnd)
+        {
+            Console.WriteLine($"Something went wrong on zoom changed delegate, start visible index ({visibleXAxesStart}) cannot be greater then end ({visibleXAxesEnd}).");
+            return Task.CompletedTask;
+        }
+
+        if (Math.Abs(visibleXAxesStart - visibleXAxesEnd) < 0.001)
+        {
+            Distance = 0;
+            ElevationGain = 0;
+            return Task.CompletedTask;
+        }
+        
         Distance = distance;
         ElevationGain = CalculateElevationGain(visibleXAxesStart, visibleXAxesEnd);
         

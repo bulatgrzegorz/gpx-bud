@@ -25,8 +25,7 @@
 <MudDrawer @bind-Open="@settingsOpen" DisableOverlay="true" Anchor="Anchor.End" Elevation="1" Variant="@DrawerVariant.Temporary">
     <MudIconButton Icon="@Icons.Material.Filled.ExitToApp" OnClick="@(() => CloseSettings())" Color="Color.Inherit"/>
     <MudNavMenu>
-        <MudNumericField T="int" Value="@_elevationThreshold" ValueChanged="i => OnElevationThresholdChange(i)" Label="Elevation threshold"/>
-        <MudNumericField T="int" Value="@_distanceThreshold" ValueChanged="i => OnDistanceThresholdChange(i)" Label="Distance threshold"/>
+        <MudNumericField T="int" Max="5000" Value="@_smoothingWindowDistanceThreshold" ValueChanged="i => OnSmoothingWindowsDistanceThresholdChange(i)" Label="Distance threshold of smoothing window"/>
         <MudNumericField T="int" Max="990000" Value="@_slopeDistanceThreshold" ValueChanged="i => OnSlopeDistanceThresholdChange(i)" Label="Slope distance threshold"/>
         <MudNumericField T="int" Value="@_combineSlopesDifferenceThreshold" ValueChanged="i => OnCombineSlopesDifferenceThresholdChange(i)" Label="Combine slopes difference threshold"/>
     </MudNavMenu>
@@ -50,18 +49,16 @@
 @code {
     private bool settingsOpen;
     private Chart? SlopeChart { get; set; }
-    private string? content;
+    private Gpx? gpxContent = null;
     private bool IsChartHidden => _datasetData.Count == 0;
     private List<Chart.Dataset> _datasetData = new();
     private List<Point> _points = new();
     private SlopeGradeType SlopeGradeType => SlopeChart?.SlopeType ?? SlopeGradeType.Percent;
     private double _sumElevationGain;
     private double _totalDistance;
-    private int _elevationThreshold = 5;
-    private int _distanceThreshold = 10;
-    private int _slopeDistanceThreshold = 50;
-    private int _combineSlopesDifferenceThreshold = 2;
-    private int _smoothingWindowThreshold = 100;
+    private int _slopeDistanceThreshold = 200;
+    private int _combineSlopesDifferenceThreshold = 3;
+    private int _smoothingWindowDistanceThreshold = 100;
 
     private void ToggleSettings() => settingsOpen = !settingsOpen;
     private void CloseSettings()
@@ -76,29 +73,24 @@
         {
             throw new ArgumentException($"Only gpx files are accepted. Got: {arg.File.Name}");
         }
-        
-        content = await new StreamReader(arg.File.OpenReadStream(30000000L)).ReadToEndAsync();
+
+        await using var fileStream = arg.File.OpenReadStream(30000000L);
+        using var streamReader = new StreamReader(fileStream);
+        var stringContent = await streamReader.ReadToEndAsync();
+        gpxContent = GpxSerializer.Deserialize(stringContent);
         _datasetData = new();
+        _points = gpxContent.PrepareGpxPoints(_smoothingWindowDistanceThreshold);
+        _sumElevationGain = _points.CalculateElevationGain();
         await GenerateSlope();
     }
 
     private Task GenerateSlope()
     {
-        if (content == null)
-        {
-            throw new ArgumentException("First choose file");
-        }
-        
         _datasetData.Clear();
-        Console.WriteLine($"Generating slope with type: {SlopeChart?.SlopeType.ToString()}");
         
-        var gpxContent = GpxSerializer.Deserialize(content);
+        _totalDistance = _points[^1].TotalDistance;
 
-        var points = gpxContent.PrepareGpxPoints(_smoothingWindowThreshold);
-        _points = points;
-        _sumElevationGain = points.CalculateElevationGain();
-        _totalDistance = points[^1].TotalDistance;
-
+        var points = _points;
         var elevetions = points.Select(x => x.Elevation).ToArray();
 
         var secondSlopeDerivative = SlopeDerivativeCalculator.GetSecondSlopeDerivative(elevetions);
@@ -110,14 +102,19 @@
         var firstElevation = points.First().Elevation;
         var previousSlopeElevation = firstElevation;
 
-        var iterationElevations = new List<(double elevetion, double totalDistance)>();
+        var iterationElevations = new List<(double elevetion, double totalDistance, double slope)>();
         for (var i = 0; i < points.Count - 1; i++)
         {
             var e = points[i];
-
-            iterationElevations.Add((e.Elevation, e.TotalDistance));
+            var slope = 0d;
+            if (slopeDistance > 0)
+            {
+                slope = PlotGenerator.CalculateSlopeGrade(e.Elevation - previousSlopeElevation, slopeDistance, SlopeGradeType);
+            }
+            
             slopeDistance += e.PointDistance;
-
+            iterationElevations.Add((e.Elevation, e.TotalDistance, slope));
+            
             if (slopeDistance < _slopeDistanceThreshold)
             {
                 k++;
@@ -132,7 +129,6 @@
                 continue;
             }
             
-            var slope = PlotGenerator.CalculateSlopeGrade(e.Elevation - previousSlopeElevation, slopeDistance, SlopeGradeType);
             //this mean that we do have new slope, but actual one should be merged with previous one. We will recreate it
             if (previousSlope.HasValue && Math.Abs(previousSlope.Value - slope) < _combineSlopesDifferenceThreshold)
             {
@@ -150,12 +146,27 @@
             if (i != points.Count - 1)
             {
                 var nextIterationValue = points[i + 1]; 
-                iterationElevations.Add((nextIterationValue.Elevation, nextIterationValue.TotalDistance));
+                var nextIterationSlope = PlotGenerator.CalculateSlopeGrade(nextIterationValue.Elevation - e.Elevation, slopeDistance + nextIterationValue.PointDistance, SlopeGradeType);
+                iterationElevations.Add((nextIterationValue.Elevation, nextIterationValue.TotalDistance, nextIterationSlope));
             }
+
+            // var slopeLabel = LabelExtensions.GetLabel(slope);
+            // var existingDataSet = _datasetData.SingleOrDefault(x => x.Label.Order == slopeLabel.Order);
+            // if (existingDataSet is null)
+            // {
+            //     var dataset = new Chart.Dataset() { Data = iterationElevations.ToArray() };
+            //     dataset.SetupSlope(slope, SlopeChart?.SlopeType ?? SlopeGradeType.Percent);
+            //     _datasetData.Add(dataset);
+            // }
+            // else
+            // {
+            //     existingDataSet.Data = [..existingDataSet.Data, ..iterationElevations];
+            // }
 
             var dataset = new Chart.Dataset() { Data = iterationElevations.ToArray() };
             dataset.SetupSlope(slope, SlopeChart?.SlopeType ?? SlopeGradeType.Percent);
             _datasetData.Add(dataset);
+
             
             iterationElevations.Clear();
             previousSlopeElevation = e.Elevation;
@@ -177,19 +188,20 @@
     //TODO: Should be refactored and combined somehow with CalculateElevationGain(Gpx gpxContent)
     private double CalculateElevationGain(double visibleXAxesStart, double visibleXAxesEnd)
     {
-        return _points.Where(x => x.TotalDistance >= visibleXAxesStart && x.TotalDistance <= visibleXAxesEnd).ToList().CalculateElevationGain();
+        var visiblePoints = _points.Where(x => x.TotalDistance >= visibleXAxesStart && x.TotalDistance <= visibleXAxesEnd).ToList();
+        if (visiblePoints.Count == 0) return 0;
+        return visiblePoints.CalculateElevationGain();
     }
-
-    private async Task OnElevationThresholdChange(int val)
+    
+    private async Task OnSmoothingWindowsDistanceThresholdChange(int val)
     {
-        _elevationThreshold = val;
-        await GenerateSlope();
-    }
-
-    private async Task OnDistanceThresholdChange(int val)
-    {
-        _distanceThreshold = val;
-        await GenerateSlope();
+        _smoothingWindowDistanceThreshold = val;
+        if (gpxContent is not null)
+        {
+            _points = gpxContent.PrepareGpxPoints(_smoothingWindowDistanceThreshold);   
+            _sumElevationGain = _points.CalculateElevationGain();
+            await GenerateSlope();
+        }
     }
 
     private async Task OnSlopeDistanceThresholdChange(int val)
