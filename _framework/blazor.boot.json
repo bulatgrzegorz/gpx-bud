@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "gpxSlopeCalculator",
   "resources": {
-    "hash": "sha256-WrkbbyWzehpYcamO5YtW47iYRF2s6SsrNZp+NgPDZc0=",
+    "hash": "sha256-RN355tacv+mIw3DkyOsdgGXODlO5bEfdtQCJsIUEWPQ=",
     "jsModuleNative": {
       "dotnet.native.8.0.1.ahpp78valh.js": "sha256-SGOlISx+3G4kkvpC9Uq3qoPGsnjxGmW61QBev0lyI5U="
     },
@@ -17,7 +17,7 @@
       "icudt_no_CJK.dat": "sha256-L7sV7NEYP37/Qr2FPCePo5cJqRgTXRwGHuwF5Q+0Nfs="
     },
     "assembly": {
-      "gpxSlopeCalculator.wasm": "sha256-7C6mHrsis4uz//cl1jOoZEZLn1PzHE9Mt1hAyRCQ72c=",
+      "gpxSlopeCalculator.wasm": "sha256-U7kbFLtxH2GG2FqRsqIoYWnoA0Phqh7Dfa9wbCrDxXE=",
       "Microsoft.AspNetCore.Components.Forms.wasm": "sha256-2nTE7xIjIqqDRFhRSyD/0OaBW4xvomBEGMZPKpzy7gY=",
       "Microsoft.AspNetCore.Components.wasm": "sha256-KPek2OgjfZTKpXYu28f8uk16jtIlePlxQF0mF0kjmD4=",
       "Microsoft.AspNetCore.Components.Web.wasm": "sha256-+fjVLjdfvNq42Mqu6fb+9XWKwVPeMiCmva9TNoQgsuY=",
@@ -59,7 +59,7 @@
       "System.Private.Uri.wasm": "sha256-pZVPv6+S1kW7gqS4y4y0M1bbZ08V2j51N/kniJr7T4A=",
       "System.Private.Xml.wasm": "sha256-3ShXDY2d2gvFGAZUz6UhK36n/+7iaoGf603wbkRh9Rw=",
       "System.Runtime.InteropServices.JavaScript.wasm": "sha256-Y8WCZOpkJbltbcM0soeb5kS01g+vCYvVCieQsCypgQE=",
-      "System.Runtime.wasm": "sha256-PGBQV+CGOfQyD5HLIh4+aNjk7x/794+xNm1oTBUd0Rc=",
+      "System.Runtime.wasm": "sha256-t//4/F4AJO/rQ8iFQA+urCZua5hQf4fF4IX0knFUpPI=",
       "System.Security.Cryptography.wasm": "sha256-inGi5F6JvPScSKafDb40nCm+3YgPXloE4+UdgSSId60=",
       "System.Text.Encodings.Web.wasm": "sha256-3ECwl3KCCs2yYp9crvnKqO8vGfiFUPgPD2gQF8CDAbg=",
       "System.Text.Json.wasm": "sha256-8DEWarYj/pMBJxMZJFKZ6DlPTltRCm9HfUFIlh69A98=",

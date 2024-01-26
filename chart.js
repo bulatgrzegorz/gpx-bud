@@ -52,24 +52,28 @@ window.setup = (id,config, instance) => {
             },
             mode: 'x',
             onZoomComplete: async function({chart}){
-                let xTicks = chart.scales.xAxes.ticks;
-                let distance = 0;
-                if(xTicks.length >= 2){
-                    distance = Math.max(0, xTicks[xTicks.length - 1].value - xTicks[0].value)
-                }
-                
-                distance = Math.min(chart.config.data.maxTotalDistance, distance)
+                // let xTicks = chart.scales.xAxes.ticks;
+                // let distance = 0;
+                // if(xTicks.length >= 2){
+                //     distance = Math.max(0, xTicks[xTicks.length - 1].value - xTicks[0].value)
+                // }
+                //
+                // distance = Math.min(chart.config.data.maxTotalDistance, distance)
 
                 const start = chart.scales.xAxes.start;
                 const end = chart.scales.xAxes.end;
-                await instance.invokeMethodAsync('ZoomChanged', start, end, distance);
+                await instance.invokeMethodAsync('ZoomChanged', start, end);
             }
         },
     };
     
     var chart = new Chart(ctx, config);
+    chart.instance = instance;
     charts[id] = chart;
 };
-window.resetChart = (id) => {
-    if (typeof charts[id] !== 'undefined') { charts[id].resetZoom(); }
+window.resetChart = async (id) => {
+    if (typeof charts[id] !== 'undefined') { 
+        charts[id].resetZoom();
+        await charts[id].instance.invokeMethodAsync('ZoomReset');
+    }
 };
